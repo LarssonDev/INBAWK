@@ -321,7 +321,27 @@ export default function GameScreen() {
                 </View>
 
                 {/* Overlay Elements */}
-                {!gameState.gameActive && !roomID && (
+                {/* Fancy Game Over Overlay */}
+                {gameState.gameOver && (
+                    <View style={styles.fullScreenOverlay}>
+                        <View style={styles.gameOverContainer}>
+                            <Text style={styles.overlayTitle}>GAME OVER</Text>
+                            <Text style={styles.overlaySubtitle}>{gameState.loserName} Lost!</Text>
+
+                            <View style={styles.buttonContainer}>
+                                <TouchableOpacity style={[styles.actionButton, styles.playAgainButton]} onPress={handleRestartGame}>
+                                    <Text style={styles.buttonText}>PLAY AGAIN</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity style={[styles.actionButton, styles.exitButton]} onPress={handleQuitGame}>
+                                    <Text style={styles.buttonText}>EXIT</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </View>
+                )}
+
+                {!gameState.gameActive && !roomID && !gameState.gameOver && (
                     <View style={styles.fullScreenOverlay}>
                         {/* Only show this large overlay in Local mode initial state for effect */}
                         {(myPlayer.hand || []).length === 0 && (
@@ -466,6 +486,48 @@ const styles = StyleSheet.create({
         color: 'white',
         fontWeight: 'bold',
         fontSize: 16
+    },
+    gameOverContainer: {
+        alignItems: 'center',
+        padding: 30,
+        backgroundColor: 'rgba(30, 30, 30, 0.9)',
+        borderRadius: 20,
+        borderWidth: 2,
+        borderColor: '#f1c40f',
+        width: '80%',
+        maxWidth: 400
+    },
+    buttonContainer: {
+        marginTop: 30,
+        width: '100%',
+        gap: 15
+    },
+    actionButton: {
+        paddingVertical: 15,
+        borderRadius: 30,
+        alignItems: 'center',
+        justifyContent: 'center',
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 3,
+    },
+    playAgainButton: {
+        backgroundColor: '#27ae60', // Green
+        borderWidth: 2,
+        borderColor: '#2ecc71'
+    },
+    exitButton: {
+        backgroundColor: '#c0392b', // Red
+        borderWidth: 2,
+        borderColor: '#e74c3c'
+    },
+    buttonText: {
+        color: 'white',
+        fontWeight: 'bold',
+        fontSize: 18,
+        letterSpacing: 1
     },
     emojiButton: {
         position: 'absolute',

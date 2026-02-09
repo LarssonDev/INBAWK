@@ -103,6 +103,8 @@ export class Game {
         this.phase = 'GAME';
         this.notification = '';
         this.winnerPos = null;
+        this.gameOver = false;
+        this.loserName = '';
 
         this.init();
     }
@@ -253,7 +255,9 @@ export class Game {
             })),
             gameActive: this.gameActive,
             phase: this.phase,
-            notification: this.notification
+            notification: this.notification,
+            gameOver: this.gameOver,
+            loserName: this.loserName
         };
 
         console.log('[HOST] Pushing state to Firebase:', {
@@ -282,7 +286,10 @@ export class Game {
         this.lastWinner = remoteState.lastWinner;
         this.gameActive = remoteState.gameActive;
         this.phase = remoteState.phase;
+        this.phase = remoteState.phase;
         this.notification = remoteState.notification;
+        this.gameOver = remoteState.gameOver;
+        this.loserName = remoteState.loserName;
 
         // Sync Stack
         this.stack = this.safeArray(remoteState.stack).map(Card.fromJSON);
@@ -322,6 +329,8 @@ export class Game {
         }
 
         this.gameActive = true;
+        this.gameOver = false;
+        this.loserName = '';
 
         // RESET STATE
         this.clearTable();
@@ -683,13 +692,17 @@ export class Game {
 
         if (active.length <= 1) {
             this.gameActive = false;
+            this.gameOver = true;
             const loser = active[0];
+            this.loserName = loser ? loser.name : 'Unknown';
 
             if (active.length === 1) {
-                this.showNotification(`Game Over! ${loser.name} is the loser!`);
+                // this.showNotification(`Game Over! ${loser.name} is the loser!`);
+                // Notification less needed if we have big overlay, but keep for sync
             } else {
-                this.showNotification("Game Over!");
+                // All out?
             }
+            this.notifyStateChange();
         }
     }
 
@@ -756,9 +769,12 @@ export class Game {
                 ledSuit: this.ledSuit,
                 gameActive: this.gameActive,
                 phase: this.phase,
+                phase: this.phase,
                 notification: this.notification,
                 roundHistory: [...this.roundHistory],
-                lastWinner: this.lastWinner
+                lastWinner: this.lastWinner,
+                gameOver: this.gameOver,
+                loserName: this.loserName
             });
         }
     }
