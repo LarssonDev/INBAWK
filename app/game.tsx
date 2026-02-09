@@ -20,13 +20,14 @@ const TABLE_W = SCREEN_WIDTH * 0.9;
 const TABLE_H = (SCREEN_HEIGHT - 140) * 0.8;
 
 // Radii for the oval path (slightly larger than the board to sit at the edge)
-const RX = TABLE_W / 2 + 10;
-const RY = TABLE_H / 2 + 20;
+// Radii for the oval path (slightly larger than the board to sit at the edge)
+const RX = TABLE_W / 2 + 25;
+const RY = TABLE_H / 2 + 30;
 
 const SEAT_DEFINITIONS: Record<string, { x: number, y: number }> = {
     'LEFT': { x: -RX, y: 0 },
     'TOP-LEFT': { x: -RX * 0.75, y: -RY * 0.85 },
-    'TOP': { x: 0, y: -RY + 35 },
+    'TOP': { x: 0, y: -RY + 10 }, // Just below top edge
     'TOP-RIGHT': { x: RX * 0.75, y: -RY * 0.85 },
     'RIGHT': { x: RX, y: 0 },
     'BOTTOM-RIGHT': { x: RX * 0.7, y: RY * 0.7 },
