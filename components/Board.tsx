@@ -662,18 +662,25 @@ const styles = StyleSheet.create({
         ...StyleSheet.absoluteFillObject,
         justifyContent: 'center',
         alignItems: 'center',
-        zIndex: -1,
+        // zIndex: -1, // Removed to ensure visibility over felt
     },
     centralLogoContainer: {
         position: 'absolute',
-        width: 120,
-        height: 120,
+        width: 180,
+        height: 180,
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 10,
+        borderRadius: 90,
+        borderWidth: 4,
+        borderColor: 'rgba(212, 175, 55, 0.5)', // Gold with opacity
+        // backgroundColor: '#1e3c29', // REMOVED as requested
+        overflow: 'hidden',
+        // elevation: 5, // REMOVED shadow/elevation
+        opacity: 0.7, // "make the opacity little less" -> more transparent
     },
     centralLogo: {
-        width: '100%',
+        width: '100%', // Fill the container
         height: '100%',
     },
     logoRing1: {

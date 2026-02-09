@@ -553,7 +553,12 @@ export class Game {
             this.handleCut(player, card);
         } else {
             // Followed suit
-            if (this.stack.length === this.playerCount) {
+            // Calculate active players (those who have cards + those who played their last card this round)
+            const activePlayersWithCards = this.players.filter(p => p.hand.length > 0).length;
+            const playersWhoFinishedInRound = this.roundHistory.filter(h => h.player.hand.length === 0).length;
+            const expectedStackSize = activePlayersWithCards + playersWhoFinishedInRound;
+
+            if (this.stack.length >= expectedStackSize) {
                 this.handleRoundEnd(false);
             } else {
                 this.nextTurn();
@@ -738,7 +743,7 @@ export class Game {
                 id: p.id,
                 name: p.name,
                 isBot: p.isBot,
-                hand: p.hand,
+                hand: [...p.hand], // Create copy to ensure React detects change
                 cutsReceived: p.cutsReceived,
                 emoji: p.emoji,
                 characterId: p.characterId  // Include characterId!
