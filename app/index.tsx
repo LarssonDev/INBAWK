@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform, Modal, ImageBackground, Image } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform, Modal, ImageBackground, Image, Switch } from 'react-native';
 import { useRouter } from 'expo-router';
 import { getDatabase, ref, set, get, child, onValue } from 'firebase/database';
 import { app } from '../firebaseConfig';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function GenericMenuScreen() {
     const router = useRouter();
     const [playerName, setPlayerName] = useState('');
-    const [menuView, setMenuView] = useState<'MAIN' | 'ONLINE' | 'SETTINGS' | 'BOT_SELECT'>('MAIN');
+    const [menuView, setMenuView] = useState<'MAIN' | 'ONLINE' | 'SETTINGS' | 'PROFILE' | 'BOT_SELECT'>('MAIN');
     const [onlineTab, setOnlineTab] = useState<'CREATE' | 'JOIN'>('CREATE');
 
     // Online Form State
@@ -24,6 +24,9 @@ export default function GenericMenuScreen() {
     // Settings Modal
     const [tempName, setTempName] = useState('');
     const [selectedChar, setSelectedChar] = useState('char1');
+    // New Settings
+    const [soundEnabled, setSoundEnabled] = useState(true);
+    const [hapticsEnabled, setHapticsEnabled] = useState(true);
 
     const db = getDatabase(app);
 
@@ -35,6 +38,8 @@ export default function GenericMenuScreen() {
         try {
             const savedName = await AsyncStorage.getItem('playerName');
             const savedChar = await AsyncStorage.getItem('playerCharacter');
+            const savedSound = await AsyncStorage.getItem('soundEnabled');
+            const savedHaptics = await AsyncStorage.getItem('hapticsEnabled');
 
 
             if (savedName) {
@@ -48,6 +53,9 @@ export default function GenericMenuScreen() {
             if (savedChar) {
                 setSelectedChar(savedChar);
             }
+
+            if (savedSound !== null) setSoundEnabled(savedSound === 'true');
+            if (savedHaptics !== null) setHapticsEnabled(savedHaptics === 'true');
         } catch (e) {
             console.error("Failed to load name", e);
         }
@@ -61,6 +69,8 @@ export default function GenericMenuScreen() {
         try {
             await AsyncStorage.setItem('playerName', tempName);
             await AsyncStorage.setItem('playerCharacter', selectedChar);
+            await AsyncStorage.setItem('soundEnabled', String(soundEnabled));
+            await AsyncStorage.setItem('hapticsEnabled', String(hapticsEnabled));
 
             setPlayerName(tempName);
             setMenuView('MAIN');
@@ -219,62 +229,94 @@ export default function GenericMenuScreen() {
         }
     };
 
+    // Background Pattern Component
+    const BackgroundPattern = () => (
+        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+            {/* Simpler, smaller, more pattern-like background */}
+            {Array.from({ length: 40 }).map((_, i) => (
+                <Text key={`bg-suit-${i}`} style={{
+                    position: 'absolute',
+                    top: `${(Math.floor(i / 5) * 12) + (Math.random() * 5)}%`, // Grid-ish rows
+                    left: `${(i % 5 * 20) + (Math.random() * 10)}%`, // Grid-ish cols
+                    opacity: 0.03 + (Math.random() * 0.02), // subtle variation
+                    fontSize: 24 + Math.random() * 12, // Smaller
+                    color: i % 2 === 0 ? '#fff' : '#f1c40f', // White and Gold mix
+                    transform: [{ rotate: `${-15 + Math.random() * 30}deg` }]
+                }}>
+                    {['♠', '♥', '♣', '♦'][i % 4]}
+                </Text>
+            ))}
+        </View>
+    );
+
     const renderMainMenu = () => (
         <View style={styles.menuContainer}>
-            {/* Card Game Title with Suits */}
+            {/* Header Section */}
             <View style={styles.titleContainer}>
+                {/* 4 Suits Row */}
                 <View style={styles.suitRow}>
-                    <Text style={styles.suitSymbol}>♠</Text>
-                    <Text style={styles.suitSymbol}>♥</Text>
-                    <Text style={styles.suitSymbol}>♣</Text>
-                    <Text style={styles.suitSymbol}>♦</Text>
+                    <MaterialCommunityIcons name="cards-spade" size={26} color="#ecf0f1" />
+                    <MaterialCommunityIcons name="cards-heart" size={26} color="#ff5252" />
+                    <MaterialCommunityIcons name="cards-club" size={26} color="#ecf0f1" />
+                    <MaterialCommunityIcons name="cards-diamond" size={26} color="#ff5252" />
                 </View>
+                {/* Title */}
                 <Text style={styles.gameTitle}>INBAWK</Text>
-                <Text style={styles.gameSubtitle}>The Ultimate Card Game</Text>
+                <Text style={styles.gameSubtitle}>The Ultimate Card</Text>
             </View>
 
-            {/* Player Card Badge */}
-            <TouchableOpacity onPress={() => setMenuView('SETTINGS')} style={styles.playerCard}>
-                <Text style={styles.playerLabel}>PLAYER</Text>
+            {/* Player Badge */}
+            <TouchableOpacity onPress={() => setMenuView('PROFILE')} style={styles.playerBadge}>
+                <View style={styles.playerBadgeHeader}>
+                    <Text style={styles.playerLabel}>PLAYER</Text>
+                </View>
                 <Text style={styles.playerNameText}>{playerName}</Text>
             </TouchableOpacity>
 
-            {/* Playing Card Style Buttons */}
+            {/* Main Buttons */}
             <View style={styles.buttonGrid}>
-                <TouchableOpacity
-                    style={styles.cardButton}
-                    onPress={handlePlaySolo}
-                >
-                    <View style={styles.cardCorner}>
-                        <Text style={styles.cardRank}>A</Text>
-                        <Text style={styles.cardSuit}>♠</Text>
+                {/* SOLO PLAY */}
+                <TouchableOpacity style={styles.mainMenuButton} onPress={handlePlaySolo}>
+                    <View style={styles.cardCornerLeft}>
+                        <Text style={styles.buttonRank}>A</Text>
+                        <Text style={styles.buttonSuit}>♠</Text>
                     </View>
-                    <Text style={styles.cardButtonText}>SOLO PLAY</Text>
-                    <Text style={styles.cardSubtext}>Against AI</Text>
+
+                    <View style={styles.buttonCenter}>
+                        <Text style={styles.buttonTitle}>SOLO PLAY</Text>
+                        <Text style={styles.buttonSubtitle}>Against AI</Text>
+                    </View>
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                    style={styles.cardButton}
-                    onPress={() => setMenuView('ONLINE')}
-                >
-                    <View style={styles.cardCorner}>
-                        <Text style={styles.cardRank}>K</Text>
-                        <Text style={[styles.cardSuit, { color: '#e74c3c' }]}>♥</Text>
+                {/* ONLINE */}
+                <TouchableOpacity style={styles.mainMenuButton} onPress={() => setMenuView('ONLINE')}>
+                    <View style={styles.cardCornerLeft}>
+                        <Text style={[styles.buttonRank, { color: '#c0392b' }]}>K</Text>
+                        <Text style={[styles.buttonSuit, { color: '#c0392b' }]}>♥</Text>
                     </View>
-                    <Text style={styles.cardButtonText}>ONLINE</Text>
-                    <Text style={styles.cardSubtext}>With Friends</Text>
+
+                    <View style={styles.buttonCenter}>
+                        <Text style={styles.buttonTitle}>ONLINE</Text>
+                        <Text style={styles.buttonSubtitle}>With Friends</Text>
+                    </View>
+                </TouchableOpacity>
+            </View>
+
+            {/* Footer */}
+            <View style={styles.footerRow}>
+                <TouchableOpacity style={styles.footerBtn} onPress={() => setMenuView('SETTINGS')}>
+                    <Ionicons name="settings-outline" size={20} color="#f1c40f" />
+                    <Text style={styles.footerBtnText}>Settings</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                    style={styles.cardButton}
-                    onPress={() => router.push('/rules')}
-                >
-                    <View style={styles.cardCorner}>
-                        <Text style={styles.cardRank}>?</Text>
-                        <Text style={styles.cardSuit}>♣</Text>
-                    </View>
-                    <Text style={styles.cardButtonText}>RULES</Text>
-                    <Text style={styles.cardSubtext}>Learn to Play</Text>
+                <TouchableOpacity style={styles.footerBtn} onPress={() => router.push('/rules')}>
+                    <Ionicons name="book-outline" size={20} color="#f1c40f" />
+                    <Text style={styles.footerBtnText}>Rules</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.footerBtn} onPress={() => Alert.alert("Contact Developer", "Email: support@inbawk.com")}>
+                    <Ionicons name="mail-outline" size={20} color="#f1c40f" />
+                    <Text style={styles.footerBtnText}>Contact</Text>
                 </TouchableOpacity>
             </View>
         </View>
@@ -346,9 +388,11 @@ export default function GenericMenuScreen() {
 
     const renderBotSelection = () => (
         <View style={styles.menuContainer}>
-            <View style={styles.titleContainer}>
-                <Text style={styles.gameTitle}>SELECT PLAYERS</Text>
-                <Text style={styles.gameSubtitle}>Choose Total Player Count</Text>
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => setMenuView('MAIN')} style={styles.backButton}>
+                    <Ionicons name="arrow-back" size={24} color="white" />
+                </TouchableOpacity>
+                <Text style={styles.screenTitle}>Select Players</Text>
             </View>
 
             <View style={styles.buttonGrid}>
@@ -356,32 +400,28 @@ export default function GenericMenuScreen() {
                     <TouchableOpacity
                         key={count}
                         style={[
-                            styles.cardButton,
+                            styles.mainMenuButton, // Reuse new button style
                             botCount === count - 1 && styles.selectedButton
                         ]}
                         onPress={() => setBotCount(count - 1)}
                     >
-                        <View style={styles.cardCorner}>
-                            <Text style={styles.cardRank}>{count}</Text>
-                            <Text style={styles.cardSuit}>♠</Text>
+                        <View style={styles.cardCornerLeft}>
+                            <Text style={styles.buttonRank}>{count}</Text>
+                            <Text style={styles.buttonSuit}>♠</Text>
                         </View>
-                        <Text style={styles.cardButtonText}>{count} PLAYERS</Text>
-                        <Text style={styles.cardSubtext}>
-                            {count === 2 ? '1 Bot' : `${count - 1} Bots`}
-                        </Text>
+                        <View style={styles.buttonCenter}>
+                            <Text style={styles.buttonTitle}>{count} PLAYERS</Text>
+                            <Text style={styles.buttonSubtitle}>
+                                {count === 2 ? '1 Bot' : `${count - 1} Bots`}
+                            </Text>
+                        </View>
                     </TouchableOpacity>
                 ))}
             </View>
 
             <View style={styles.buttonRow}>
                 <TouchableOpacity
-                    style={[styles.actionButton, { backgroundColor: '#7f8c8d', flex: 1 }]}
-                    onPress={() => setMenuView('MAIN')}
-                >
-                    <Text style={styles.actionButtonText}>Back</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.actionButton, { backgroundColor: '#27ae60', flex: 1 }]}
+                    style={[styles.actionButton, { backgroundColor: '#27ae60', flex: 1, marginTop: 20 }]}
                     onPress={startSoloGame}
                 >
                     <Text style={styles.actionButtonText}>Start Game</Text>
@@ -390,11 +430,15 @@ export default function GenericMenuScreen() {
         </View>
     );
 
-    const renderSettings = () => (
+    const renderProfile = () => (
         <View style={styles.menuContainer}>
-            <View style={styles.titleContainer}>
-                <Text style={styles.gameTitle}>SETTINGS</Text>
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => setMenuView('MAIN')} style={styles.backButton}>
+                    <Ionicons name="arrow-back" size={24} color="white" />
+                </TouchableOpacity>
+                <Text style={styles.screenTitle}>Edit Profile</Text>
             </View>
+
             <View style={styles.formSection}>
                 <Text style={styles.label}>Your Name</Text>
                 <TextInput
@@ -443,7 +487,52 @@ export default function GenericMenuScreen() {
                     ))}
                 </View>
 
-                <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#9b59b6' }]} onPress={savePlayerName}>
+                <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#9b59b6', marginTop: 10 }]} onPress={savePlayerName}>
+                    <Text style={styles.actionButtonText}>Save Profile</Text>
+                </TouchableOpacity>
+            </View>
+        </View>
+    );
+
+    const renderSettings = () => (
+        <View style={styles.menuContainer}>
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => setMenuView('MAIN')} style={styles.backButton}>
+                    <Ionicons name="arrow-back" size={24} color="white" />
+                </TouchableOpacity>
+                <Text style={styles.screenTitle}>Settings</Text>
+            </View>
+
+            <View style={styles.formSection}>
+                <Text style={styles.label}>Preferences</Text>
+                <View style={styles.preferencesContainer}>
+                    <View style={styles.preferenceRow}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                            <Ionicons name="volume-high" size={20} color="white" />
+                            <Text style={styles.preferenceLabel}>Sound Effects</Text>
+                        </View>
+                        <Switch
+                            trackColor={{ false: "#767577", true: "#2ecc71" }}
+                            thumbColor={soundEnabled ? "#f4f3f4" : "#f4f3f4"}
+                            onValueChange={setSoundEnabled}
+                            value={soundEnabled}
+                        />
+                    </View>
+                    <View style={styles.preferenceRow}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                            <Ionicons name="phone-portrait-outline" size={20} color="white" />
+                            <Text style={styles.preferenceLabel}>Haptics / Vibration</Text>
+                        </View>
+                        <Switch
+                            trackColor={{ false: "#767577", true: "#2ecc71" }}
+                            thumbColor={hapticsEnabled ? "#f4f3f4" : "#f4f3f4"}
+                            onValueChange={setHapticsEnabled}
+                            value={hapticsEnabled}
+                        />
+                    </View>
+                </View>
+
+                <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#3498db', marginTop: 10 }]} onPress={savePlayerName}>
                     <Text style={styles.actionButtonText}>Save Settings</Text>
                 </TouchableOpacity>
             </View>
@@ -452,341 +541,193 @@ export default function GenericMenuScreen() {
 
     return (
         <LinearGradient
-            colors={['#c04000', '#8b2500', '#a0301a']}
+            // Green gradient for casino/poker feel
+            // Top: #216335 (Forest Green), Mid: #123d1f, Bot: #051c0a
+            colors={['#216335', '#123d1f', '#051c0a']}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
             style={styles.container}
         >
-            <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.3)' }}>
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === "ios" ? "padding" : "height"}
-                    style={{ flex: 1 }}
-                >
-                    <ScrollView contentContainerStyle={styles.scrollContent}>
-                        {menuView === 'MAIN' && renderMainMenu()}
-                        {menuView === 'ONLINE' && renderOnlineMenu()}
-                        {menuView === 'SETTINGS' && renderSettings()}
-                        {menuView === 'BOT_SELECT' && renderBotSelection()}
-                    </ScrollView>
+            <BackgroundPattern />
+
+            <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.1)' }}>
+                <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
+                    {menuView === 'MAIN' ? (
+                        <View style={styles.fixedContent}>
+                            {renderMainMenu()}
+                        </View>
+                    ) : (
+                        <ScrollView contentContainerStyle={styles.scrollContent}>
+                            {menuView === 'ONLINE' && renderOnlineMenu()}
+                            {menuView === 'SETTINGS' && renderSettings()}
+                            {menuView === 'PROFILE' && renderProfile()}
+                            {menuView === 'BOT_SELECT' && renderBotSelection()}
+                        </ScrollView>
+                    )}
                 </KeyboardAvoidingView>
             </View>
         </LinearGradient >
     );
 }
 
-const MenuButton = ({ title, subtitle, icon, color, onPress }: any) => (
-    <TouchableOpacity style={styles.menuButton} onPress={onPress}>
-        <View style={[styles.iconContainer, { backgroundColor: color }]}>
-            <Ionicons name={icon} size={24} color="white" />
-        </View>
-        <View style={styles.menuTextContainer}>
-            <Text style={styles.menuTitle}>{title}</Text>
-            <Text style={styles.menuSubtitle}>{subtitle}</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={24} color="rgba(255,255,255,0.3)" />
-    </TouchableOpacity>
-);
-
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    overlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.4)', // Lighter overlay to see background better
-    },
+    container: { flex: 1 },
     scrollContent: {
         flexGrow: 1,
         justifyContent: 'center',
         padding: 20
     },
+    fixedContent: {
+        flex: 1,
+        justifyContent: 'center',
+        padding: 20,
+        width: '100%',
+        maxWidth: 500, // Slightly wider to ensure fit
+        alignSelf: 'center'
+    },
     menuContainer: {
         width: '100%',
-        maxWidth: 400,
-        alignSelf: 'center',
+        maxWidth: 420,
+        alignSelf: 'center'
     },
-    // Card Game Menu Styles
-    titleContainer: {
-        alignItems: 'center',
-        marginBottom: 15,
-        marginTop: 10,
-    },
-    suitRow: {
-        flexDirection: 'row',
-        gap: 10,
-        marginBottom: 8,
-    },
+
+    // TITLE
+    titleContainer: { alignItems: 'center', marginBottom: 10, marginTop: 20 }, // Minimal margins
+    suitRow: { flexDirection: 'row', gap: 10, marginBottom: 2, opacity: 0.7 },
     suitSymbol: {
-        fontSize: 24,
-        color: '#fff',
-        opacity: 0.9,
+        fontSize: 22,
+        fontWeight: 'bold',
+        textShadowColor: 'rgba(0,0,0,0.5)',
+        textShadowOffset: { width: 1, height: 1 },
+        textShadowRadius: 2
     },
     gameTitle: {
-        fontSize: 28,
-        fontWeight: '900',
-        color: '#ffd700',
-        letterSpacing: 3,
-        textTransform: 'uppercase',
-        textShadowColor: '#000',
-        textShadowOffset: { width: 0, height: 2 },
-        textShadowRadius: 4,
+        fontSize: 32, fontWeight: '900', color: '#f1c40f',
+        letterSpacing: 2, textShadowColor: 'rgba(0,0,0,0.6)',
+        textShadowOffset: { width: 0, height: 3 }, textShadowRadius: 6
     },
     gameSubtitle: {
-        fontSize: 10,
-        color: '#fff',
-        marginTop: 3,
-        letterSpacing: 1,
-        opacity: 0.8,
+        fontSize: 9, color: 'rgba(255,255,255,0.6)',
+        letterSpacing: 2, marginTop: 0, fontWeight: '600'
     },
-    playerCard: {
+
+    // PLAYER BADGE
+    playerBadge: {
         alignSelf: 'center',
-        backgroundColor: '#fff',
-        paddingHorizontal: 15,
-        paddingVertical: 8,
-        borderRadius: 6,
-        marginBottom: 15,
-        minWidth: 120,
-        borderWidth: 2,
-        borderColor: '#333',
+        width: 140,
+        backgroundColor: 'rgba(30, 30, 30, 0.6)',
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#f1c40f',
+        marginBottom: 20,
+        overflow: 'hidden'
+    },
+    playerBadgeHeader: {
+        backgroundColor: 'rgba(255,255,255,0.1)',
+        paddingVertical: 3,
+        alignItems: 'center'
     },
     playerLabel: {
-        fontSize: 9,
-        color: '#666',
-        fontWeight: 'bold',
-        letterSpacing: 1,
-        textAlign: 'center',
+        fontSize: 9, color: '#f1c40f', fontWeight: 'bold', letterSpacing: 1
     },
     playerNameText: {
-        color: '#000',
-        fontSize: 14,
-        fontWeight: 'bold',
-        textAlign: 'center',
-        marginTop: 2,
+        fontSize: 14, color: 'white', fontWeight: 'bold',
+        textAlign: 'center', paddingVertical: 6, letterSpacing: 0.5
     },
-    buttonGrid: {
-        gap: 10,
-    },
-    cardButton: {
+
+    // BUTTONS
+    buttonGrid: { gap: 12, marginBottom: 20, width: '100%' },
+    mainMenuButton: {
         backgroundColor: '#fff',
-        paddingVertical: 15,
-        paddingHorizontal: 15,
+        height: 60,
         borderRadius: 10,
-        borderWidth: 2,
-        borderColor: '#333',
-        position: 'relative',
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 15,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.3,
         shadowRadius: 4,
-        elevation: 4,
+        elevation: 5
     },
-    cardCorner: {
-        position: 'absolute',
-        top: 6,
-        left: 10,
+    cardCornerLeft: {
         alignItems: 'center',
+        width: 30,
+        marginRight: 10
     },
-    cardRank: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#000',
+    buttonRank: { fontSize: 16, fontWeight: 'bold', color: '#000' },
+    buttonSuit: { fontSize: 16, color: '#000' },
+
+    buttonCenter: {
+        flex: 1,
+        alignItems: 'center'
     },
-    cardSuit: {
-        fontSize: 16,
-        color: '#000',
-    },
-    cardButtonText: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#000',
-        textAlign: 'center',
-        letterSpacing: 1.5,
-    },
-    cardSubtext: {
-        fontSize: 11,
-        color: '#666',
-        textAlign: 'center',
-        marginTop: 3,
-    },
-    selectedButton: {
-        backgroundColor: '#ffd700',
-        borderColor: '#000',
-        borderWidth: 3,
-    },
-    buttonRow: {
-        flexDirection: 'row',
-        gap: 10,
-        marginTop: 15,
-    },
-    formSection: {
-        width: '100%',
-    },
-    screenTitle: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: 'white',
-    },
-    backButton: {
-        position: 'absolute',
-        left: 0,
-        padding: 5
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 30,
-        position: 'relative',
-        minHeight: 50
-    },
-    buttonGroup: {
-        gap: 15
-    },
-    menuButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.1)',
+    // Preferences
+    preferencesContainer: {
+        backgroundColor: 'rgba(0,0,0,0.2)',
+        borderRadius: 12,
         padding: 15,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
-    },
-    iconContainer: {
-        width: 50,
-        height: 50,
-        borderRadius: 12,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 15
-    },
-    menuTextContainer: {
-        flex: 1
-    },
-    menuTitle: {
-        color: 'white',
-        fontSize: 18,
-        fontWeight: 'bold'
-    },
-    menuSubtitle: {
-        color: '#95a5a6',
-        fontSize: 14
-    },
-    // Online Menu Styles
-    tabContainer: {
-        flexDirection: 'row',
-        backgroundColor: 'rgba(255,255,255,0.1)',
-        borderRadius: 12,
-        padding: 4,
         marginBottom: 20
     },
-    tab: {
-        flex: 1,
-        paddingVertical: 10,
-        alignItems: 'center',
-        borderRadius: 10
-    },
-    activeTab: {
-        backgroundColor: 'rgba(255,255,255,0.15)'
-    },
-    tabText: {
-        color: '#95a5a6',
-        fontWeight: 'bold'
-    },
-    activeTabText: {
-        color: 'white'
-    },
-    formContainer: {
-        backgroundColor: 'rgba(0,0,0,0.2)',
-        padding: 20,
-        borderRadius: 16
-    },
-    label: {
-        color: '#bdc3c7',
-        fontSize: 14,
-        fontWeight: 'bold',
-        marginBottom: 10,
-        textTransform: 'uppercase'
-    },
-    input: {
-        backgroundColor: 'rgba(255,255,255,0.1)',
-        borderRadius: 12,
-        padding: 15,
-        color: 'white',
-        fontSize: 16,
-        marginBottom: 20,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)'
-    },
-    playerCountRow: {
+    preferenceRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginBottom: 20
-    },
-    countButton: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
-        backgroundColor: 'rgba(255,255,255,0.1)',
-        justifyContent: 'center',
         alignItems: 'center',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)'
+        paddingVertical: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(255,255,255,0.05)'
     },
-    countButtonSelected: {
-        backgroundColor: '#f1c40f',
-        borderColor: '#f1c40f'
-    },
-    countText: {
+    preferenceLabel: {
         color: 'white',
-        fontSize: 18,
-        fontWeight: 'bold'
+        fontSize: 16,
+        fontWeight: '500'
     },
-    countTextSelected: {
-        color: '#2c3e50'
+
+    buttonTitle: {
+        fontSize: 16, fontWeight: 'bold', color: '#000', letterSpacing: 1
     },
-    actionButton: {
-        padding: 16,
-        borderRadius: 12,
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 3
+    buttonSubtitle: {
+        fontSize: 10, color: '#666', marginTop: 0, fontWeight: '500'
     },
-    actionButtonText: {
-        color: 'white',
-        fontSize: 18,
-        fontWeight: 'bold'
+
+    // FOOTER
+    footerRow: {
+        flexDirection: 'row', justifyContent: 'center', gap: 30, marginTop: 5
     },
-    helperText: {
-        color: '#7f8c8d',
-        textAlign: 'center',
-        marginTop: 15,
-        fontSize: 12
-    },
-    charGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'center',
-        gap: 15,
-        marginBottom: 20
-    },
-    charOption: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        borderWidth: 2,
-        borderColor: 'rgba(255,255,255,0.2)',
-        overflow: 'hidden',
-        backgroundColor: '#333'
-    },
-    charOptionSelected: {
-        borderColor: '#f1c40f',
-        borderWidth: 3,
-        transform: [{ scale: 1.1 }]
-    },
-    charImage: {
-        width: '100%',
-        height: '100%'
-    }
+    footerBtn: { alignItems: 'center' },
+    footerBtnText: { color: '#fff', fontSize: 11, marginTop: 6, fontWeight: '500' },
+
+    // ... (Keep existing shared styles for Forms, Online, etc.)
+    screenTitle: { fontSize: 24, fontWeight: 'bold', color: 'white' },
+    backButton: { position: 'absolute', left: 0, padding: 5, zIndex: 10 },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 30, minHeight: 50 },
+    tabContainer: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 12, padding: 4, marginBottom: 20 },
+    tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 10 },
+    activeTab: { backgroundColor: 'rgba(255,255,255,0.15)' },
+    tabText: { color: '#95a5a6', fontWeight: 'bold' },
+    activeTabText: { color: 'white' },
+    formContainer: { backgroundColor: 'rgba(0,0,0,0.3)', padding: 24, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+    label: { color: '#bdc3c7', fontSize: 12, fontWeight: 'bold', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 1 },
+    input: { backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 12, padding: 15, color: 'white', fontSize: 16, marginBottom: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+    playerCountRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25 },
+    countButton: { width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+    countButtonSelected: { backgroundColor: '#f1c40f', borderColor: '#f1c40f' },
+    countText: { color: 'white', fontSize: 18, fontWeight: 'bold' },
+    countTextSelected: { color: '#2c3e50' },
+    actionButton: { padding: 16, borderRadius: 16, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 3 },
+    actionButtonText: { color: 'white', fontSize: 18, fontWeight: 'bold', letterSpacing: 1 },
+    helperText: { color: '#7f8c8d', textAlign: 'center', marginTop: 15, fontSize: 12 },
+    formSection: { width: '100%' },
+    buttonRow: { flexDirection: 'row', marginTop: 10 },
+    charGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 15, marginBottom: 20 },
+    charOption: { width: 60, height: 60, borderRadius: 30, borderWidth: 2, borderColor: 'rgba(255,255,255,0.2)', overflow: 'hidden', backgroundColor: '#333' },
+    charOptionSelected: { borderColor: '#f1c40f', borderWidth: 3, transform: [{ scale: 1.1 }] },
+    charImage: { width: '100%', height: '100%' },
+    selectedButton: { borderWidth: 3, borderColor: '#f1c40f', backgroundColor: '#fffcf0' },
+    iconContainer: { width: 50, height: 50, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+    menuButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.1)', padding: 15, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+    menuTextContainer: { flex: 1 },
+    menuTitle: { color: 'white', fontSize: 18, fontWeight: 'bold' },
+    menuSubtitle: { color: '#95a5a6', fontSize: 14 }
 });
 

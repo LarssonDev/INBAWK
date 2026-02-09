@@ -15,24 +15,24 @@ import Animated, { FadeInDown, FadeOut } from 'react-native-reanimated';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-// The table (Board) occupies roughly 90% width and 80% of the available height (SCREEN_HEIGHT - 140)
-const TABLE_W = SCREEN_WIDTH * 0.9;
-const TABLE_H = (SCREEN_HEIGHT - 140) * 0.8;
+// The table (Board) occupies roughly 65% width and 65% of the available height (SCREEN_HEIGHT - 140)
+const TABLE_W = SCREEN_WIDTH * 0.65;
+const TABLE_H = (SCREEN_HEIGHT - 140) * 0.65;
 
 // Radii for the oval path (slightly larger than the board to sit at the edge)
 // Radii for the oval path (slightly larger than the board to sit at the edge)
-const RX = TABLE_W / 2 + 25;
-const RY = TABLE_H / 2 + 30;
+const RX = TABLE_W / 2 + 75;
+const RY = TABLE_H / 2 + 35;
 
 const SEAT_DEFINITIONS: Record<string, { x: number, y: number }> = {
     'LEFT': { x: -RX, y: 0 },
-    'TOP-LEFT': { x: -RX * 0.75, y: -RY * 0.85 },
-    'TOP': { x: 0, y: -RY + 10 }, // Just below top edge
-    'TOP-RIGHT': { x: RX * 0.75, y: -RY * 0.85 },
+    'TOP-LEFT': { x: -RX * 0.8, y: -RY * 0.8 },
+    'TOP': { x: 0, y: -RY },
+    'TOP-RIGHT': { x: RX * 0.8, y: -RY * 0.8 },
     'RIGHT': { x: RX, y: 0 },
-    'BOTTOM-RIGHT': { x: RX * 0.7, y: RY * 0.7 },
-    'BOTTOM': { x: 0, y: RY + 20 },
-    'BOTTOM-LEFT': { x: -RX * 0.7, y: RY * 0.7 },
+    'BOTTOM-RIGHT': { x: RX * 0.8, y: RY * 0.8 },
+    'BOTTOM': { x: 0, y: RY },
+    'BOTTOM-LEFT': { x: -RX * 0.8, y: RY * 0.8 },
 };
 
 const SEAT_CONFIGS: Record<number, string[]> = {
@@ -158,11 +158,6 @@ export default function GameScreen() {
                 {roomID && (
                     <View style={styles.roomCodeContainer}>
                         <Text style={styles.roomCodeText}>Room: {roomID}</Text>
-                        <Text style={{ color: 'red', fontSize: 10 }}>
-                            Stack: {gameState?.stack?.length || 0} |
-                            Hist: {gameState?.roundHistory?.length || 0} |
-                            Players: {gameState?.players?.length || 0}
-                        </Text>
                     </View>
                 )}
 
@@ -406,10 +401,11 @@ const styles = StyleSheet.create({
     roomCodeContainer: {
         position: 'absolute',
         top: 15,
-        alignSelf: 'center',
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        padding: 5,
-        borderRadius: 10,
+        left: 70,
+        backgroundColor: 'rgba(0,0,0,0.4)',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
         zIndex: 250
     },
     roomCodeText: {

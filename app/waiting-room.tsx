@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Clipboard, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Clipboard, ScrollView, Image } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { getDatabase, ref, onValue, set, remove, update } from 'firebase/database';
 import { app } from '../firebaseConfig';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import CharacterAssets from '../constants/CharacterAssets';
 
 export default function WaitingRoomScreen() {
     const router = useRouter();
@@ -12,10 +13,12 @@ export default function WaitingRoomScreen() {
     const roomID = params.roomID as string;
     const isHost = params.isHost === 'true';
     const playerName = params.playerName as string;
+    const playerCharacter = params.playerCharacter as string;
 
     const [players, setPlayers] = useState<any[]>([]);
     const [roomStatus, setRoomStatus] = useState<string>('WAITING');
     const [loading, setLoading] = useState(false);
+    const [maxPlayers, setMaxPlayers] = useState<number>(6);
 
     const db = getDatabase(app);
 
@@ -28,7 +31,13 @@ export default function WaitingRoomScreen() {
             if (status === 'PLAYING') {
                 router.replace({
                     pathname: '/game',
-                    params: { roomID, playerName, isHost: params.isHost }
+                    params: {
+                        roomID,
+                        playerName,
+                        isHost: params.isHost,
+                        playerCharacter,
+                        showCharacters: 'true'
+                    }
                 });
             }
         });
@@ -43,9 +52,15 @@ export default function WaitingRoomScreen() {
             }
         });
 
+        const maxPlayersUnsubscribe = onValue(ref(db, `rooms/${roomID}/maxPlayers`), (snapshot) => {
+            const val = snapshot.val();
+            if (val) setMaxPlayers(Number(val));
+        });
+
         return () => {
             statusUnsubscribe();
             playersUnsubscribe();
+            maxPlayersUnsubscribe();
         };
     }, [roomID]);
 
@@ -59,8 +74,8 @@ export default function WaitingRoomScreen() {
     };
 
     const handleAddBot = async () => {
-        if (players.length >= 6) {
-            Alert.alert("Room Full", "Max 6 players allowed.");
+        if (players.length >= maxPlayers) {
+            Alert.alert("Room Full", `Max ${maxPlayers} players allowed.`);
             return;
         }
         setLoading(true);
@@ -69,10 +84,12 @@ export default function WaitingRoomScreen() {
             const ids = players.map(p => p.id);
             while (ids.includes(nextId)) nextId++;
 
+            const randomCharId = `char${Math.floor(Math.random() * 11) + 1}`;
             const newBot = {
                 id: nextId,
                 name: `Bot ${nextId}`,
                 isBot: true,
+                characterId: randomCharId,
                 ready: true,
                 emoji: '🤖'
             };
@@ -99,35 +116,41 @@ export default function WaitingRoomScreen() {
         Alert.alert("Copied!", `Room Code ${roomID} copied to clipboard.`);
     };
 
-    const MAX_PLAYERS = 6;
-    const slots = Array.from({ length: MAX_PLAYERS }, (_, i) => i);
+    const slots = Array.from({ length: maxPlayers }, (_, i) => i);
 
-    const renderPlayerSlot = (player: any) => (
-        <View key={player.id} style={styles.playerItem}>
-            <View style={styles.playerInfo}>
-                <Text style={styles.avatar}>{player.isBot ? '🤖' : '👤'}</Text>
-                <View>
-                    <Text style={styles.playerName}>
-                        {player.name} {player.name === playerName ? '(You)' : ''}
-                    </Text>
-                    {player.isHost && <Text style={styles.hostBadge}>HOST</Text>}
+    const renderPlayerSlot = (player: any) => {
+        const charId = player.characterId || (player.isBot ? `char${(player.id % 11) + 1}` : 'char1');
+        const avatarSource = CharacterAssets[charId]?.neutral || CharacterAssets['char1'].neutral;
+
+        return (
+            <View key={player.id} style={styles.playerItem}>
+                <View style={styles.playerInfo}>
+                    <View style={styles.avatarContainer}>
+                        <Image source={avatarSource} style={styles.avatarImage} />
+                    </View>
+                    <View>
+                        <Text style={styles.playerName}>
+                            {player.name} {player.name === playerName ? '(You)' : ''}
+                        </Text>
+                        {player.isHost && <Text style={styles.hostBadge}>HOST</Text>}
+                    </View>
+                </View>
+                <View style={styles.rightActions}>
+                    {isHost && player.isBot && (
+                        <TouchableOpacity onPress={() => handleRemovePlayer(player.id)} style={styles.removeBtn}>
+                            <Ionicons name="trash-outline" size={20} color="#e74c3c" />
+                        </TouchableOpacity>
+                    )}
+                    <Ionicons name="checkmark-circle" size={20} color="#2ecc71" />
                 </View>
             </View>
-            <View style={styles.rightActions}>
-                {isHost && player.isBot && (
-                    <TouchableOpacity onPress={() => handleRemovePlayer(player.id)} style={styles.removeBtn}>
-                        <Ionicons name="trash-outline" size={20} color="#e74c3c" />
-                    </TouchableOpacity>
-                )}
-                <Ionicons name="checkmark-circle" size={20} color="#2ecc71" />
-            </View>
-        </View>
-    );
+        );
+    };
 
     const renderEmptySlot = (index: number) => (
         <View key={`empty-${index}`} style={[styles.playerItem, styles.emptySlot]}>
             <View style={styles.playerInfo}>
-                <View style={[styles.avatar, styles.emptyAvatar]}>
+                <View style={[styles.avatarContainer, styles.emptyAvatar]}>
                     <Ionicons name="person-outline" size={20} color="rgba(255,255,255,0.3)" />
                 </View>
                 <Text style={styles.emptyText}>Waiting...</Text>
@@ -141,11 +164,12 @@ export default function WaitingRoomScreen() {
         <LinearGradient
             colors={['#1a0e0e', '#2d1b1b', '#3d2517']}
             style={styles.container}
-        >    <View style={styles.splitLayout}>
+        >
+            <View style={styles.splitLayout}>
                 {/* LEFT PANEL: PLAYERS */}
                 <View style={styles.leftPanel}>
                     <View style={styles.panelHeader}>
-                        <Text style={styles.panelTitle}>Players ({players.length}/{MAX_PLAYERS})</Text>
+                        <Text style={styles.panelTitle}>Players ({players.length}/{maxPlayers})</Text>
                         {botCount > 0 && <Text style={styles.botCountBadge}>{botCount} Bots</Text>}
                     </View>
 
@@ -172,9 +196,9 @@ export default function WaitingRoomScreen() {
                         {isHost ? (
                             <>
                                 <TouchableOpacity
-                                    style={[styles.bigButton, styles.botButton, (loading || players.length >= 6) && styles.disabledBtn]}
+                                    style={[styles.bigButton, styles.botButton, (loading || players.length >= maxPlayers) && styles.disabledBtn]}
                                     onPress={handleAddBot}
-                                    disabled={loading || players.length >= 6}
+                                    disabled={loading || players.length >= maxPlayers}
                                 >
                                     {loading ? <ActivityIndicator color="white" /> : (
                                         <>
@@ -341,6 +365,21 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12
+    },
+    avatarContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: '#f1c40f',
+        backgroundColor: '#34495e',
+        alignItems: 'center',
+        justifyContent: 'center'
+    },
+    avatarImage: {
+        width: '100%',
+        height: '100%',
     },
     avatar: {
         fontSize: 24

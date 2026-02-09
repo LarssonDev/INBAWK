@@ -18,13 +18,13 @@ import Card from './Card';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // The table (Board) occupies roughly 90% width and 80% of the available height (SCREEN_HEIGHT - 140)
-const TABLE_W = SCREEN_WIDTH * 0.9;
-const TABLE_H = (SCREEN_HEIGHT - 140) * 0.8;
+const TABLE_W = SCREEN_WIDTH * 0.65;
+const TABLE_H = (SCREEN_HEIGHT - 140) * 0.65;
 
 // Radii for the oval path (slightly larger than the board to sit at the edge)
 // Radii for the oval path (slightly larger than the board to sit at the edge)
-const RX = TABLE_W / 2 + 25;
-const RY = TABLE_H / 2 + 30;
+const RX = TABLE_W / 2 + 10;
+const RY = TABLE_H / 2 + 10;
 
 const SEAT_DEFINITIONS: Record<string, { x: number, y: number }> = {
     'LEFT': { x: -RX, y: 0 },

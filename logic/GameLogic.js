@@ -1,4 +1,4 @@
-import { ref, set, onValue, push, remove, update, get } from 'firebase/database';
+import { ref, set, onValue, push, remove, update, get, onDisconnect } from 'firebase/database';
 import { app } from '../firebaseConfig'; // Adjust path if needed
 import { getDatabase } from 'firebase/database';
 
@@ -51,6 +51,7 @@ export class Player {
         this.cutsReceived = { 's': 0, 'h': 0, 'd': 0, 'c': 0 }; // Track times this suit was cut
         this.emoji = ''; // For temporary emoji reactions
         this.emotion = 'neutral'; // For emotion display
+        this.ping = Math.floor(Math.random() * 60) + 20; // Simulated Ping (ms)
     }
 
     receiveCard(card) {
@@ -170,13 +171,54 @@ export class Game {
                 }
             });
 
+            // HOST: Monitor Presence & Disconnections
+            const presenceRef = ref(db, `rooms/${this.roomID}/presence`);
+            this.lastPresence = {};
+            onValue(presenceRef, (snap) => {
+                this.lastPresence = snap.val() || {};
+            });
+
+            // Check for timeouts every 5s
+            setInterval(() => {
+                const NOW = Date.now();
+                if (!this.players) return;
+
+                let changed = false;
+                this.players.forEach(p => {
+                    // Start checking only after game begins? Or always?
+                    if (p.isBot || p.id === 0) return; // Skip bots and Host
+
+                    const lastSeen = this.lastPresence[p.id] || 0;
+                    console.log(`[PRESENCE] Checking ${p.name} (${p.id}): LastSeen=${lastSeen}, Diff=${NOW - lastSeen}`);
+
+                    if (lastSeen > 0 && (NOW - lastSeen > 15000)) { // 15s timeout
+                        console.log(`[DISCONNECT] Player ${p.id} (${p.name}) timed out. Last seen: ${NOW - lastSeen}ms ago`);
+                        p.isBot = true;
+                        p.name = `${p.name} (Bot)`;
+                        this.showNotification(`${p.name} left. Bot taking over.`);
+                        changed = true;
+
+                        // If it was their turn, take it!
+                        if (this.currentTurn === p.id && this.gameActive) {
+                            setTimeout(() => this.botTurn(), 1000);
+                        }
+                    }
+                });
+                if (changed) this.pushStateToFirebase();
+            }, 5000);
+
             // Listen for Actions
             const actionsRef = ref(db, `rooms/${this.roomID}/actions`);
             onValue(actionsRef, (snapshot) => {
                 const actions = snapshot.val();
                 if (actions) {
                     Object.entries(actions).forEach(([key, action]) => {
-                        this.handleClientAction(action);
+                        try {
+                            this.handleClientAction(action);
+                        } catch (e) {
+                            console.error("Error handling action, removing anyway:", e);
+                        }
+                        // Always remove action to prevent loops
                         remove(ref(db, `rooms/${this.roomID}/actions/${key}`));
                     });
                 }
@@ -196,8 +238,43 @@ export class Game {
                 });
                 if (remoteState) {
                     this.syncFromFirebase(remoteState);
+
+                    // Start Heartbeat once if not already started
+                    if (!this.heartbeatStarted && this.players.length > 0) {
+                        this.startHeartbeat();
+                    }
                 }
             });
+        }
+
+        if (this.isHost) {
+            setTimeout(() => this.startHeartbeat(), 2000);
+        }
+
+        // Simulate Ping fluctuations (Host only)
+        if (this.isHost && this.isOnline) {
+            setInterval(() => {
+                if (!this.players) return;
+                this.players.forEach(p => {
+                    // Fluctuate ping between 20ms and 150ms
+                    // User complained about red ping: Bias towards lower values (20-80ms)
+                    const fluctuation = Math.floor(Math.random() * 11) - 5; // -5 to +5
+                    let newPing = (p.ping || 40) + fluctuation;
+
+                    // Strong bias to return to healthy range
+                    if (newPing > 100) newPing -= 10;
+
+                    if (newPing < 20) newPing = 20 + Math.random() * 10;
+                    if (newPing > 150) newPing = 150 - Math.random() * 10; // Cap at 150 (Yellow/Red border)
+
+                    p.ping = Math.floor(newPing);
+                });
+                // We don't push IMMEDIATELY to avoid spam, but playCard/etc will push it.
+                // Or we can push if nothing else happens? 
+                // Let's just update local state, it will sync next time a move happens or we force push?
+                // If we want liveliness, we should push.
+                if (this.gameActive) this.pushStateToFirebase();
+            }, 5000);
         }
     }
 
@@ -211,11 +288,11 @@ export class Game {
         }
 
         if (action.type === 'PLAY_CARD') {
-            if (action.playerIndex === this.currentTurn) {
+            // Validate turn (and player existence)
+            if (this.players[action.playerIndex] && action.playerIndex === this.currentTurn) {
                 // Determine card index by value/suit since indices might desync?
                 // Or trust index if we are consistent.
-                // 3. Clear stack and add penalty cards to victim's hand
-                const penaltyCards = [...this.stack, playedCard]; s[action.playerIndex];
+
                 const player = this.players[action.playerIndex];
                 const cardIndex = player.hand.findIndex(c => c.suit === action.card.suit && c.rank === action.rank);
 
@@ -240,6 +317,7 @@ export class Game {
                 isBot: p.isBot,
                 emoji: p.emoji,
                 emotion: p.emotion,
+                ping: p.ping,
                 characterId: p.characterId,
 
                 hand: p.hand.map(c => c.toJSON()),
@@ -302,6 +380,7 @@ export class Game {
             const p = new Player(pData.id, pData.isBot, pData.name, pData.characterId);
             p.emoji = pData.emoji || '';
             p.emotion = pData.emotion || 'neutral';
+            p.ping = (typeof pData.ping === 'number') ? pData.ping : 50;
 
             p.cutsReceived = pData.cutsReceived || { 's': 0, 'h': 0, 'd': 0, 'c': 0 };
             p.hand = this.safeArray(pData.hand).map(Card.fromJSON);
@@ -777,6 +856,26 @@ export class Game {
                 loserName: this.loserName
             });
         }
+    }
+
+    startHeartbeat() {
+        if (this.heartbeatStarted) return;
+
+        const myPlayer = this.players.find(p => p.name === this.myPlayerName);
+        if (!myPlayer) {
+            console.log(`[HEARTBEAT] FAILED: Could not find player with name '${this.myPlayerName}' in players list:`, this.players.map(p => p.name));
+            return;
+        }
+
+        console.log(`[HEARTBEAT] Starting for ${myPlayer.name} (${myPlayer.id})`);
+        this.heartbeatStarted = true;
+
+        const presenceRef = ref(db, `rooms/${this.roomID}/presence/${myPlayer.id}`);
+        onDisconnect(presenceRef).remove();
+
+        setInterval(() => {
+            set(presenceRef, Date.now());
+        }, 3000);
     }
 }
 

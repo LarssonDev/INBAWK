@@ -1,5 +1,5 @@
-import React from 'react';
-import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
+import React, { useMemo } from 'react';
+import { StyleSheet, View, Text, TouchableOpacity, useWindowDimensions } from 'react-native';
 import Animated, { FadeInDown, FadeOut, ZoomIn } from 'react-native-reanimated';
 
 const SYMBOLS: any = {
@@ -7,6 +7,94 @@ const SYMBOLS: any = {
 };
 
 const Card = ({ suit, rank, onPress, disabled, style, back, noEntering }: any) => {
+    const { width } = useWindowDimensions();
+
+    const styles = useMemo(() => {
+        const BASE_WIDTH = 800;
+        const RAW_SCALE = width / BASE_WIDTH;
+        // Adjust scale for mobiles to ensure readability
+        const SCALE = width < 500 ? 0.9 : Math.max(0.8, Math.min(1.4, RAW_SCALE));
+
+        // Slightly increased from previous step (approx 60% of original)
+        const CARD_WIDTH = 40 * SCALE;
+        const CARD_HEIGHT = 60 * SCALE;
+
+        return StyleSheet.create({
+            card: {
+                width: CARD_WIDTH,
+                height: CARD_HEIGHT,
+                backgroundColor: 'white',
+                borderRadius: 3.5 * SCALE,
+                padding: 2 * SCALE,
+                justifyContent: 'space-between',
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 1.5 },
+                shadowOpacity: 0.25,
+                shadowRadius: 2,
+                elevation: 3,
+                borderWidth: 1,
+                borderColor: '#ccc'
+            },
+            disabled: {
+                backgroundColor: '#f0f0f0'
+            },
+            topLeft: {
+                alignItems: 'center',
+            },
+            bottomRight: {
+                alignItems: 'center',
+                transform: [{ rotate: '180deg' }]
+            },
+            center: {
+                position: 'absolute',
+                top: 0, left: 0, right: 0, bottom: 0,
+                justifyContent: 'center',
+                alignItems: 'center',
+            },
+            text: {
+                fontSize: 8.5 * SCALE,
+                fontWeight: 'bold',
+                lineHeight: 9.5 * SCALE
+            },
+            largeSymbol: {
+                fontSize: 16 * SCALE,
+            },
+            red: { color: '#e74c3c' },
+            black: { color: '#2c3e50' },
+            cardBack: {
+                backgroundColor: '#2980b9',
+                borderColor: '#fff',
+                borderWidth: 2 * SCALE,
+                padding: 4 * SCALE,
+            },
+            backPattern: {
+                flex: 1,
+                backgroundColor: '#3498db',
+                borderRadius: 3 * SCALE,
+                borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.2)',
+                justifyContent: 'center',
+                alignItems: 'center',
+            },
+            backInner: {
+                width: '80%',
+                height: '80%',
+                borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.3)',
+                borderRadius: 1.5 * SCALE,
+                justifyContent: 'center',
+                alignItems: 'center',
+            },
+            backLogo: {
+                color: 'white',
+                fontSize: 20 * SCALE,
+                fontWeight: 'bold',
+                opacity: 0.5,
+                fontStyle: 'italic',
+            }
+        });
+    }, [width]);
+
     const CardContent = (
         <TouchableOpacity
             onPress={onPress}
@@ -52,80 +140,5 @@ const Card = ({ suit, rank, onPress, disabled, style, back, noEntering }: any) =
         </Animated.View>
     );
 };
-
-const styles = StyleSheet.create({
-    card: {
-        width: 60,  // Standard size (matches user preference)
-        height: 90,
-        backgroundColor: 'white',
-        borderRadius: 6,
-        padding: 4,
-        justifyContent: 'space-between',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 3,
-        elevation: 4,
-        borderWidth: 1,
-        borderColor: '#ccc'
-    },
-    disabled: {
-        // opacity: 0.6, // Removed opacity to prevent "glass" look -> now solid
-        backgroundColor: '#f0f0f0' // Subtle gray to indicate non-interactive but solid
-    },
-    topLeft: {
-        alignItems: 'center',
-    },
-    bottomRight: {
-        alignItems: 'center',
-        transform: [{ rotate: '180deg' }]
-    },
-    center: {
-        position: 'absolute',
-        top: 0, left: 0, right: 0, bottom: 0,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    text: {
-        fontSize: 12, // Reduced from 16
-        fontWeight: 'bold',
-    },
-    largeSymbol: {
-        fontSize: 24, // Reduced from 32
-    },
-    red: { color: '#e74c3c' },
-    black: { color: '#2c3e50' },
-    cardBack: {
-        backgroundColor: '#2980b9', // Deep blue back
-        borderColor: '#fff',
-        borderWidth: 3,
-        padding: 5,
-    },
-    backPattern: {
-        flex: 1,
-        backgroundColor: '#3498db',
-        borderRadius: 4,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.2)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    backInner: {
-        width: '80%',
-        height: '80%',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.3)',
-        borderRadius: 2,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    backLogo: {
-        color: 'white',
-        fontSize: 32,
-        fontWeight: 'bold',
-        opacity: 0.5,
-        fontStyle: 'italic',
-    }
-});
 
 export default Card;

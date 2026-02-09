@@ -1,23 +1,14 @@
 import React from 'react';
 import { StyleSheet, View, Text, Image } from 'react-native';
-
-const CHARACTER_IMAGES: any = {
-    char1: require('../assets/images/characters/char1_neutral.png'),
-    char2: require('../assets/images/characters/char2_neutral.png'),
-    char3: require('../assets/images/characters/char3_neutral.png'),
-    char4: require('../assets/images/characters/char4_neutral.png'),
-    char5: require('../assets/images/characters/char5_neutral.png'),
-    char6: require('../assets/images/characters/char6_neutral.png'),
-    char7: require('../assets/images/characters/char7_neutral.png'),
-    char8: require('../assets/images/characters/char8_neutral.png'),
-    char9: require('../assets/images/characters/char9_neutral.png'),
-    char10: require('../assets/images/characters/char10_neutral.png'),
-    char11: require('../assets/images/characters/char11_neutral.png'),
-};
+import { Ionicons } from '@expo/vector-icons';
+import CharacterAssets from '../constants/CharacterAssets';
 
 const Opponent = ({ player, isActive, showCharacters }: any) => {
     // Determine avatar display
-    const useCharacterImage = showCharacters && player.characterId && CHARACTER_IMAGES[player.characterId];
+    const charId = player.characterId;
+    const hasAsset = charId && CharacterAssets[charId];
+    const useCharacterImage = showCharacters && hasAsset;
+
     const bgColor = '#666';
     const avatarEmoji = player.name ? player.name.charAt(0).toUpperCase() : '?';
 
@@ -26,7 +17,7 @@ const Opponent = ({ player, isActive, showCharacters }: any) => {
             {useCharacterImage ? (
                 <View style={styles.avatarContainer}>
                     <Image
-                        source={CHARACTER_IMAGES[player.characterId]}
+                        source={CharacterAssets[charId].neutral}
                         style={styles.avatarImage}
                         resizeMode="cover"
                     />
@@ -39,6 +30,24 @@ const Opponent = ({ player, isActive, showCharacters }: any) => {
             <View style={styles.info}>
                 <Text style={styles.name}>{player.name}</Text>
                 <Text style={styles.cardCount}>{player.hand.length} Cards</Text>
+
+                {/* Signal Strength Indicator */}
+                <View style={styles.signalContainer}>
+                    <Ionicons
+                        name="cellular"
+                        size={12}
+                        color={
+                            (player.ping || 50) < 80 ? '#2ecc71' :
+                                (player.ping || 50) < 150 ? '#f1c40f' : '#e74c3c'
+                        }
+                    />
+                    <Text style={[styles.pingText, {
+                        color: (player.ping || 50) < 80 ? '#2ecc71' :
+                            (player.ping || 50) < 150 ? '#f1c40f' : '#e74c3c'
+                    }]}>
+                        {player.ping != null ? `${player.ping}ms` : '...'}
+                    </Text>
+                </View>
             </View>
             {player.emoji && (
                 <View style={styles.emojiContainer}>
@@ -106,6 +115,20 @@ const styles = StyleSheet.create({
         color: '#f1c40f',
         fontSize: 10,
         fontWeight: 'bold',
+    },
+    pingText: {
+        fontSize: 10,
+        fontWeight: 'bold'
+    },
+    signalContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        marginTop: 2,
+        backgroundColor: 'rgba(0,0,0,0.3)',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 10
     },
     emojiContainer: {
         position: 'absolute',
