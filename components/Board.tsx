@@ -22,9 +22,9 @@ const TABLE_W = SCREEN_WIDTH * 0.65;
 const TABLE_H = (SCREEN_HEIGHT - 140) * 0.65;
 
 // Radii for the oval path (slightly larger than the board to sit at the edge)
-// Radii for the oval path (slightly larger than the board to sit at the edge)
-const RX = TABLE_W / 2 + 10;
-const RY = TABLE_H / 2 + 10;
+// Synced with game.tsx to ensure card animations work correctly
+const RX = TABLE_W / 2 + 50;
+const RY = TABLE_H / 2 + 25;
 
 const SEAT_DEFINITIONS: Record<string, { x: number, y: number }> = {
     'LEFT': { x: -RX, y: 0 },
@@ -41,7 +41,7 @@ const SEAT_CONFIGS: Record<number, string[]> = {
     3: ['LEFT', 'TOP', 'RIGHT'],
     4: ['LEFT', 'TOP', 'RIGHT', 'BOTTOM'],
     5: ['LEFT', 'TOP-LEFT', 'TOP-RIGHT', 'RIGHT', 'BOTTOM'],
-    6: ['LEFT', 'TOP-LEFT', 'TOP-RIGHT', 'RIGHT', 'BOTTOM-RIGHT', 'BOTTOM-LEFT'],
+    6: ['LEFT', 'TOP-LEFT', 'TOP-RIGHT', 'RIGHT', 'BOTTOM'], // Synced with game.tsx
 };
 
 const CHARACTER_IMAGES: any = {
@@ -459,15 +459,18 @@ const Board = ({ stack, ledSuit, roundHistory, lastWinner, myPlayerId, myIndex, 
 
     const getStartPosition = (playerId: any) => {
         if (playerId === myPlayerId) {
-            return { x: 0, y: 600 };
+            // Player's cards come from bottom position
+            return { x: 0, y: 250 };
         }
+        // Use exact seat position - no arbitrary multiplier
         const pos = getSeatPosition(playerId);
-        return { x: pos.x * 1.5, y: pos.y * 1.5 };
+        return { x: pos.x, y: pos.y };
     };
 
     const getWinnerPosition = (winnerId: any) => {
+        // Use exact seat position for winner animation
         const pos = getSeatPosition(winnerId);
-        return { x: pos.x * 1.5, y: pos.y * 1.5 };
+        return { x: pos.x, y: pos.y };
     };
 
     const getSuitSymbol = (suit: string) => {

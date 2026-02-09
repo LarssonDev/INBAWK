@@ -20,9 +20,9 @@ const TABLE_W = SCREEN_WIDTH * 0.65;
 const TABLE_H = (SCREEN_HEIGHT - 140) * 0.65;
 
 // Radii for the oval path (slightly larger than the board to sit at the edge)
-// Radii for the oval path (slightly larger than the board to sit at the edge)
-const RX = TABLE_W / 2 + 75;
-const RY = TABLE_H / 2 + 35;
+// Reduced to prevent players from being cut off in 6-player mode
+const RX = TABLE_W / 2 + 50; // Reduced from 75 to 50
+const RY = TABLE_H / 2 + 25; // Reduced from 35 to 25
 
 const SEAT_DEFINITIONS: Record<string, { x: number, y: number }> = {
     'LEFT': { x: -RX, y: 0 },
@@ -39,7 +39,7 @@ const SEAT_CONFIGS: Record<number, string[]> = {
     3: ['LEFT', 'TOP', 'RIGHT'],
     4: ['LEFT', 'TOP', 'RIGHT', 'BOTTOM'],
     5: ['LEFT', 'TOP-LEFT', 'TOP-RIGHT', 'RIGHT', 'BOTTOM'],
-    6: ['LEFT', 'TOP-LEFT', 'TOP-RIGHT', 'RIGHT', 'BOTTOM-RIGHT', 'BOTTOM-LEFT'],
+    6: ['LEFT', 'TOP-LEFT', 'TOP-RIGHT', 'RIGHT', 'BOTTOM'], // 2 top, 2 bottom (1 is player), 1 left, 1 right
 };
 
 export default function GameScreen() {
@@ -119,8 +119,13 @@ export default function GameScreen() {
     const config = SEAT_CONFIGS[totalPlayers] || SEAT_CONFIGS[4];
 
     // Find the home/bottom seat index for the user's perspective
-    // For 3: LEFT, 4: BOTTOM, 5: BOTTOM, 6: BOTTOM-LEFT
-    const homeSeatMap: Record<number, number> = { 3: 0, 4: 3, 5: 4, 6: 5 };
+    // Original working configuration - player position in seat array
+    const homeSeatMap: Record<number, number> = {
+        3: 0,  // Player at index 0 (LEFT position conceptually)
+        4: 3,  // Player at index 3 (BOTTOM)
+        5: 4,  // Player at index 4 (BOTTOM)
+        6: 4   // Player at index 4 (BOTTOM) - with new config this works
+    };
     const homeIndex = homeSeatMap[totalPlayers] ?? 0;
 
     // Function to get seat for a player index
